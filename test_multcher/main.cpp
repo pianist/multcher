@@ -2,11 +2,11 @@
 #include <multcher/multcher.hpp>
 #include <string.h>
 
-struct MyConsumer : public multcher_consumer
+struct MyConsumer : public multcher::consumer_t
 {
 	MyConsumer();
 	~MyConsumer() throw();
-	void receive(const multcher_request& req, const multcher_response& resp, CURLcode code);
+	void receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code);
 };
 
 MyConsumer::MyConsumer()
@@ -17,11 +17,11 @@ MyConsumer::~MyConsumer() throw()
 {
 }
 
-void MyConsumer::receive(const multcher_request& req, const multcher_response& resp, CURLcode code)
+void MyConsumer::receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code)
 {
 	fprintf(stdout, "Request complete with code = %d\n", code);
 	fprintf(stdout, "URL: %s\n", req.url.c_str());
-	for (multcher_redirects::const_iterator it = resp.redirects.begin(); it != resp.redirects.end(); ++it)
+	for (multcher::redirects_t::const_iterator it = resp.redirects.begin(); it != resp.redirects.end(); ++it)
 		fprintf(stderr, "\t(%d) %s\n", it->code, it->location.c_str());
 	fprintf(stdout, "HTTP code: %d\n", resp.code);
 	fprintf(stdout, "Content-type: %s\n", resp.content_type.c_str());
@@ -29,7 +29,7 @@ void MyConsumer::receive(const multcher_request& req, const multcher_response& r
 
 int main(int argc, char** argv)
 {
-	multcher mym;
+	multcher::downloader mym;
 	MyConsumer cons;
 	mym.set_consumer(&cons);
 
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 				char* nl = strpbrk(url, "\r\n");
 				if (nl) *nl = 0;
 
-				multcher_request r;
+				multcher::request_t r;
 				r.url = url;
 				r.accept_language = "en";
 				mym.add_request(r);
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		multcher_request r;
+		multcher::request_t r;
 		r.url = "http://yandex.ru/robots.txt";
 		mym.add_request(r);
 

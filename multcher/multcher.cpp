@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-multcher::multcher()
+multcher::downloader::downloader()
   : shutdown_asap(false)
   , thread_started(false)
   , max_concur(10)
@@ -11,19 +11,19 @@ multcher::multcher()
 	cmh = curl_multi_init();
 }
 
-multcher::~multcher()
+multcher::downloader::~downloader()
 {
 	curl_multi_cleanup(cmh);
 }
 
-void multcher::add_request(const multcher_request& req)
+void multcher::downloader::add_request(const request_t& req)
 {
 	queue.add(req);
 }
 
 static size_t cb_response_data(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
-	multcher_response* resp = (multcher_response*)userdata;
+	multcher::response_t* resp = (multcher::response_t*)userdata;
 	resp->body.append(ptr, size * nmemb);
 
 	return nmemb;
@@ -57,7 +57,7 @@ static std::string check_header(char* ptr, size_t len, const char* s)
 
 static size_t cb_response_header(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
-	multcher_response* resp = (multcher_response*)userdata;
+	multcher::response_t* resp = (multcher::response_t*)userdata;
 	std::string h;
 
 	if (strncasecmp((char*)ptr, "HTTP/", 5) == 0)
@@ -69,7 +69,7 @@ static size_t cb_response_header(void* ptr, size_t size, size_t nmemb, void* use
 	h = check_header((char*)ptr, size * nmemb, "Location: ");
 	if (!h.empty())
 	{
-		multcher_redirect redir;
+		multcher::redirect_t redir;
 		redir.location = h;
 		redir.code = resp->code;
 
@@ -92,16 +92,16 @@ static size_t cb_response_header(void* ptr, size_t size, size_t nmemb, void* use
 	return nmemb;
 }
 
-void multcher::add_requests(bool can_lock)
+void multcher::downloader::add_requests(bool can_lock)
 {
-	multcher_request r;
+	request_t r;
 
 	while (queue.get(r, can_lock) >= 0)
 	{
 		can_lock = false;
 
 		CURL* ch = curl_easy_init();
-		multcher_internal& p = internal_data[ch];
+		multcher::multcher_internal_t& p = internal_data[ch];
 		p.req = r;
 
 		curl_easy_setopt(ch, CURLOPT_URL, r.url.c_str());
@@ -136,25 +136,25 @@ void multcher::add_requests(bool can_lock)
 
 static void* job_working_thread_proc(void* p)
 {
-	multcher* m = (multcher*)p;
+	multcher::downloader* m = (multcher::downloader*)p;
 	m->working_thread_proc();
 	return 0;
 }
 
-void multcher::create_working_thread()
+void multcher::downloader::create_working_thread()
 {
 	pthread_create(&th_fetcher, 0, job_working_thread_proc, this);
 	thread_started = true;
 }
 
-void multcher::join_working_thread()
+void multcher::downloader::join_working_thread()
 {
 	shutdown_asap = true;
 	queue.signal();
 	pthread_join(th_fetcher, 0);
 }
 
-void multcher::working_thread_proc()
+void multcher::downloader::working_thread_proc()
 {
 	queries_running = -1;
 
@@ -200,7 +200,7 @@ void multcher::working_thread_proc()
 		int msgs_in_queue = 0;
 		while ((msg = curl_multi_info_read(cmh, &msgs_in_queue)))
 		{
-			multcher_internal& p = internal_data[msg->easy_handle];
+			multcher_internal_t& p = internal_data[msg->easy_handle];
 
 			consumer->receive(p.req, p.resp, msg->data.result);
 
