@@ -16,9 +16,14 @@ struct request_t
 	unsigned max_redirect;
 	bool fail_on_error;
 
+	// internal usage only!!!
+	bool is_internal;
+	std::string domain;
+
 	request_t()
 	  : max_redirect(5)
 	  , fail_on_error(false)
+	  , is_internal(false)
 	{
 	}
 };

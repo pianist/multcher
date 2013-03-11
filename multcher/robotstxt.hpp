@@ -1,6 +1,11 @@
 #ifndef __MULTCHER_ROBOTS_TXT_INFORMER__
 #define __MULTCHER_ROBOTS_TXT_INFORMER__
 
+#include <string>
+#include <vector>
+#include <map>
+#include "consumer.hpp"
+
 namespace multcher
 {
 
@@ -8,30 +13,56 @@ struct domain_robotstxt_t
 {
 	std::vector<std::string> allow;
 	std::vector<std::string> disallow;
+	time_t last_update;
+	bool loaded;
+
+	domain_robotstxt_t()
+	  : last_update(0)
+	  , loaded(false)
+	{
+	}
 
 	void parse_from_source(const char* src, const char* bot_id);
 
 	// 0 disallow, 1 allow
-	bool check_uri(const char* uri) const;
+	bool check_uri(const std::string& uri) const;
 };
 
+struct robotstxt_check_result_t
+{
+	bool allow;
+	bool unknown;
+	bool update_robots_txt;
+	std::string domain;
+};
 
-class robotstxt_t
+struct robotstxt_t
 {
 	typedef std::map<std::string, domain_robotstxt_t> data_type;
 	data_type _data;
 
+	void check_url(const std::string& url, robotstxt_check_result_t& r);
+};
+
+class robotstxt_consumer_t : public consumer_t
+{
+	robotstxt_t rtxt_data;
+	pthread_mutex_t rtxt_data_mutex;
+
 public:
-	// -1 -- should read robots.txt, 0 disallow, 1 allow
-	int check_url(const char* url) const;
-	
+	robotstxt_consumer_t();
+	~robotstxt_consumer_t() throw();
+
+	void check_url(const std::string& url, robotstxt_check_result_t& r);
+
+	void receive(const request_t& req, const response_t& resp, CURLcode code);
 };
 
 
 
 
 
-}
+} // namespace multcher
 
 #endif // __MULTCHER_ROBOTS_TXT_INFORMER__
 

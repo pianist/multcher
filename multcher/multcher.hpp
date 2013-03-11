@@ -10,6 +10,7 @@
 #include <coda/synque.hpp>
 #include <curl/curl.h>
 #include "consumer.hpp"
+#include "robotstxt.hpp"
 
 namespace multcher
 {
@@ -32,6 +33,8 @@ class downloader
 {
 	coda::synque<request_t> queue;
 
+	robotstxt_consumer_t rtxt_consumer;
+
 	class multcher_internal;
 	std::map<CURL*, multcher_internal_t> internal_data;
 
@@ -42,6 +45,11 @@ class downloader
 	int queries_running;
 	CURLM* cmh;
 	consumer_t* consumer;
+
+	typedef std::vector<request_t> domain_unknown_requests_t;
+	typedef std::map<std::string, domain_unknown_requests_t> unknown_requests_t;
+	unknown_requests_t unknown_urls;
+	pthread_mutex_t unknown_urls_mutex;
 
 	void add_requests(bool can_lock);
 public:

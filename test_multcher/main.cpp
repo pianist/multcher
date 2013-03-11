@@ -19,12 +19,14 @@ MyConsumer::~MyConsumer() throw()
 
 void MyConsumer::receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code)
 {
+	fprintf(stdout, "--->8---\n");
 	fprintf(stdout, "Request complete with code = %d\n", code);
 	fprintf(stdout, "URL: %s\n", req.url.c_str());
 	for (multcher::redirects_t::const_iterator it = resp.redirects.begin(); it != resp.redirects.end(); ++it)
 		fprintf(stderr, "\t(%d) %s\n", it->code, it->location.c_str());
 	fprintf(stdout, "HTTP code: %d\n", resp.code);
 	fprintf(stdout, "Content-type: %s\n", resp.content_type.c_str());
+	fprintf(stdout, "---8<---\n");
 }
 
 int main(int argc, char** argv)
@@ -55,17 +57,17 @@ int main(int argc, char** argv)
 	else
 	{
 		multcher::request_t r;
-		r.url = "http://yandex.ru/robots.txt";
+		r.url = "http://yandex.ru:80/";
 		mym.add_request(r);
 
-		r.url = "http://mail.ru/robots.txt";
+		r.url = "https://mail.ru";
 		mym.add_request(r);
 
 		r.url = "http://busuu.com/";
 		r.accept_language = "ru";
 		mym.add_request(r);
 
-		r.url = "http://vk.com/robots.txt";
+		r.url = "https://vk.com/pianisteg";
 		r.fail_on_error = true;
 		mym.add_request(r);
 	}
