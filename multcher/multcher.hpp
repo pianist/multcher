@@ -51,6 +51,7 @@ class downloader
 	pthread_mutex_t unknown_urls_mutex;
 
 	void add_requests(bool can_lock);
+	void handle_result_message(CURLMsg* msg);
 public:
 	downloader(const std::string& myself_robot_id);
 	~downloader();

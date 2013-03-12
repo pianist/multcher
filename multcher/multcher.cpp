@@ -150,6 +150,7 @@ void multcher::downloader::add_requests(bool can_lock)
 		curl_easy_setopt(ch, CURLOPT_HEADERFUNCTION, cb_response_header);
 		curl_easy_setopt(ch, CURLOPT_HEADERDATA, &p.resp);
 		curl_easy_setopt(ch, CURLOPT_ENCODING, "gzip,deflate");
+		curl_easy_setopt(ch, CURLOPT_TIMEOUT, 10);
 
 		if (!r.fail_on_error) curl_easy_setopt(ch, CURLOPT_FAILONERROR, 1);
 
@@ -192,6 +193,78 @@ void multcher::downloader::join_working_thread()
 	pthread_join(th_fetcher, 0);
 }
 
+static void do_select_job(CURLM* cmh)
+{
+	fd_set fdread;
+	fd_set fdwrite;
+	fd_set fdexcep;
+	int maxfd = -1;
+	long curl_timeo = -1;
+
+	FD_ZERO(&fdread);
+	FD_ZERO(&fdwrite);
+	FD_ZERO(&fdexcep);
+
+	struct timeval timeout;
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+
+	curl_multi_timeout(cmh, &curl_timeo);
+	if (curl_timeo >= 0)
+	{
+		timeout.tv_sec = curl_timeo / 1000;
+		if (timeout.tv_sec > 1)
+		{
+			timeout.tv_sec = 1;
+		}
+		else
+		{
+			timeout.tv_usec = (curl_timeo % 1000) * 1000;
+		}
+	}
+
+	curl_multi_fdset(cmh, &fdread, &fdwrite, &fdexcep, &maxfd);
+
+	select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+}
+
+void multcher::downloader::handle_result_message(CURLMsg* msg)
+{
+	multcher_internal_t& p = internal_data[msg->easy_handle];
+
+	if (p.req.is_internal)
+	{
+		if ((msg->data.result == 0) || (msg->data.result == 22))
+		{
+			rtxt_consumer.receive(p.req, p.resp, msg->data.result);
+		}
+		else
+		{
+			rtxt_consumer.completely_failed(p.req);
+		}
+
+		domain_unknown_requests_t durls;
+		pthread_mutex_lock(&unknown_urls_mutex);
+		unknown_urls[p.req.domain].swap(durls);
+		unknown_urls.erase(p.req.domain);
+		pthread_mutex_unlock(&unknown_urls_mutex);
+
+		domain_unknown_requests_t::const_iterator it;
+		for (it = durls.begin(); it != durls.end(); ++it)
+		{
+			add_request(*it);
+		}
+	}
+	else
+	{
+		consumer->receive(p.req, p.resp, msg->data.result);
+	}
+
+	if (p.additional_headers) curl_slist_free_all(p.additional_headers);
+	internal_data.erase(msg->easy_handle);
+	curl_easy_cleanup(msg->easy_handle);
+}
+
 void multcher::downloader::working_thread_proc()
 {
 	queries_running = -1;
@@ -202,75 +275,13 @@ void multcher::downloader::working_thread_proc()
 
 		curl_multi_perform(cmh, &queries_running);
 
-		fd_set fdread;
-		fd_set fdwrite;
-		fd_set fdexcep;
-		int maxfd = -1;
-		long curl_timeo = -1;
-
-		FD_ZERO(&fdread);
-		FD_ZERO(&fdwrite);
-		FD_ZERO(&fdexcep);
-
-		struct timeval timeout;
-		timeout.tv_sec = 1;
-		timeout.tv_usec = 0;
-
-		curl_multi_timeout(cmh, &curl_timeo);
-		if (curl_timeo >= 0)
-		{
-			timeout.tv_sec = curl_timeo / 1000;
-			if (timeout.tv_sec > 1)
-			{
-				timeout.tv_sec = 1;
-			}
-			else
-			{
-				timeout.tv_usec = (curl_timeo % 1000) * 1000;
-			}
-		}
-
-		curl_multi_fdset(cmh, &fdread, &fdwrite, &fdexcep, &maxfd);
-
-		select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+		do_select_job(cmh);
 
 		CURLMsg* msg = 0;
 		int msgs_in_queue = 0;
 		while ((msg = curl_multi_info_read(cmh, &msgs_in_queue)))
 		{
-			multcher_internal_t& p = internal_data[msg->easy_handle];
-
-			if (p.req.is_internal)
-			{
-				if ((msg->data.result == 0) || (msg->data.result == 22))
-				{
-					rtxt_consumer.receive(p.req, p.resp, msg->data.result);
-				}
-				else
-				{
-					rtxt_consumer.completely_failed(p.req);
-				}
-
-				domain_unknown_requests_t durls;
-				pthread_mutex_lock(&unknown_urls_mutex);
-				unknown_urls[p.req.domain].swap(durls);
-				unknown_urls.erase(p.req.domain);
-				pthread_mutex_unlock(&unknown_urls_mutex);
-
-				domain_unknown_requests_t::const_iterator it;
-				for (it = durls.begin(); it != durls.end(); ++it)
-				{
-					add_request(*it);
-				}
-			}
-			else
-			{
-				consumer->receive(p.req, p.resp, msg->data.result);
-			}
-
-			if (p.additional_headers) curl_slist_free_all(p.additional_headers);
-			internal_data.erase(msg->easy_handle);
-			curl_easy_cleanup(msg->easy_handle);
+			handle_result_message(msg);
 		}
 
 		if (!thread_started && !queries_running && queue.size() == 0)
