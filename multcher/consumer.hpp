@@ -60,6 +60,8 @@ struct consumer_t
 	{
 	}
 
+	virtual void completely_failed(const request_t& req) = 0;
+
 	virtual void receive(const request_t& req, const response_t& resp, CURLcode code) = 0;
 };
 

@@ -52,6 +52,11 @@ void multcher::downloader::add_request(const request_t& req)
 		unknown_urls[cr.domain].push_back(req);
 		pthread_mutex_unlock(&unknown_urls_mutex);
 	}
+
+	if (!cr.update_robots_txt && !cr.allow && !cr.unknown)
+	{
+		consumer->completely_failed(req);
+	}
 }
 
 static size_t cb_response_data(char* ptr, size_t size, size_t nmemb, void* userdata)
@@ -237,7 +242,14 @@ void multcher::downloader::working_thread_proc()
 
 			if (p.req.is_internal)
 			{
-				rtxt_consumer.receive(p.req, p.resp, msg->data.result);
+				if ((msg->data.result == 0) || (msg->data.result == 22))
+				{
+					rtxt_consumer.receive(p.req, p.resp, msg->data.result);
+				}
+				else
+				{
+					rtxt_consumer.completely_failed(p.req);
+				}
 
 				domain_unknown_requests_t durls;
 				pthread_mutex_lock(&unknown_urls_mutex);

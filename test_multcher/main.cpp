@@ -6,6 +6,7 @@ struct MyConsumer : public multcher::consumer_t
 {
 	MyConsumer();
 	~MyConsumer() throw();
+	void completely_failed(const multcher::request_t& req);
 	void receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code);
 };
 
@@ -15,6 +16,11 @@ MyConsumer::MyConsumer()
 
 MyConsumer::~MyConsumer() throw()
 {
+}
+
+void MyConsumer::completely_failed(const multcher::request_t& req)
+{
+	fprintf(stdout, "COMPLETELY FAILED: %s\n", req.url.c_str());
 }
 
 void MyConsumer::receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code)

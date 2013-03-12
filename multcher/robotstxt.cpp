@@ -117,6 +117,17 @@ void multcher::robotstxt_consumer_t::check_url(const std::string& url, robotstxt
 	pthread_mutex_unlock(&rtxt_data_mutex);
 }
 
+void multcher::robotstxt_consumer_t::completely_failed(const request_t& req)
+{
+	pthread_mutex_lock(&rtxt_data_mutex);
+
+	domain_robotstxt_t& dr = rtxt_data._data[req.domain];
+	dr.last_update = ::time(0);
+	dr.broken = true;
+
+	pthread_mutex_unlock(&rtxt_data_mutex);
+}
+
 void multcher::robotstxt_consumer_t::receive(const request_t& req, const response_t& resp, CURLcode code)
 {
 	pthread_mutex_lock(&rtxt_data_mutex);

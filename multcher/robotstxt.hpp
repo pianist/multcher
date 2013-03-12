@@ -59,6 +59,7 @@ public:
 
 	void check_url(const std::string& url, robotstxt_check_result_t& r);
 
+	void completely_failed(const request_t& req);
 	void receive(const request_t& req, const response_t& resp, CURLcode code);
 };
 
