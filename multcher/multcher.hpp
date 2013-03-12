@@ -33,8 +33,6 @@ class downloader
 {
 	coda::synque<request_t> queue;
 
-	robotstxt_consumer_t rtxt_consumer;
-
 	class multcher_internal;
 	std::map<CURL*, multcher_internal_t> internal_data;
 
@@ -45,6 +43,7 @@ class downloader
 	int queries_running;
 	CURLM* cmh;
 	consumer_t* consumer;
+	robotstxt_consumer_t rtxt_consumer;
 
 	typedef std::vector<request_t> domain_unknown_requests_t;
 	typedef std::map<std::string, domain_unknown_requests_t> unknown_requests_t;
@@ -53,7 +52,7 @@ class downloader
 
 	void add_requests(bool can_lock);
 public:
-	downloader();
+	downloader(const std::string& myself_robot_id);
 	~downloader();
 	void set_concurrent_max_count(int v) { max_concur = v; }
 	void set_consumer(consumer_t* c) { consumer = c; }

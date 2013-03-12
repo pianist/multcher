@@ -1,7 +1,8 @@
 #include "robotstxt.hpp"
 #include <string.h>
 
-multcher::robotstxt_consumer_t::robotstxt_consumer_t()
+multcher::robotstxt_consumer_t::robotstxt_consumer_t(const std::string& myself_robot_id)
+  : _myself_robot_id(myself_robot_id)
 {
 	pthread_mutex_init(&rtxt_data_mutex, 0);
 }
@@ -70,7 +71,28 @@ void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_re
 		return;
 	}
 
-	if (it->second.loaded == false)
+	if (it->second.broken)
+	{
+		// XXX we try to download robots.txt not more than one time per 5 min
+		if (::time(0) - it->second.last_update > 5 * 60)
+		{
+			r.update_robots_txt = true;
+		}
+		else
+		{
+			r.update_robots_txt = false;
+		}
+
+		// we can not download anything until we load robots.txt
+		if (!it->second.loaded)
+		{
+			r.allow = false;
+			r.unknown = false;
+			return;
+		}
+	}
+
+	if (!it->second.loaded)
 	{
 		r.allow = false;
 		r.unknown = true;
@@ -79,9 +101,7 @@ void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_re
 	}
 
 	r.allow = it->second.check_uri(uri);
-	// TODO check whether update robots.txt ...
-	// and set r.update_robots_txt...
-	r.update_robots_txt = false;
+	r.update_robots_txt = ::time(0) - it->second.last_update > 3 * 24 * 60 * 60;
 	r.unknown = false;
 }
 
@@ -99,10 +119,31 @@ void multcher::robotstxt_consumer_t::check_url(const std::string& url, robotstxt
 
 void multcher::robotstxt_consumer_t::receive(const request_t& req, const response_t& resp, CURLcode code)
 {
-	domain_robotstxt_t dr;
+	pthread_mutex_lock(&rtxt_data_mutex);
+	domain_robotstxt_t dr = rtxt_data._data[req.domain];
+	pthread_mutex_unlock(&rtxt_data_mutex);
 	dr.last_update = ::time(0);
-	dr.loaded = true;
-	// TODO
+
+	switch (code)
+	{
+		case CURLE_COULDNT_RESOLVE_HOST:
+		case CURLE_COULDNT_CONNECT:
+		case CURLE_OPERATION_TIMEDOUT:
+			// TODO add additional "later robots.txt queue"
+			dr.broken = true;
+			break;
+
+		case CURLE_OK:
+			dr.loaded = true;
+			dr.broken = false;
+			dr.parse_from_source(resp.body.c_str(), _myself_robot_id.c_str());
+			break;
+
+		default:
+			dr.loaded = true;
+			dr.broken = false;
+			break;
+	}
 
 	pthread_mutex_lock(&rtxt_data_mutex);
 	rtxt_data._data[req.domain] = dr;

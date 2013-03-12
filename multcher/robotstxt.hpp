@@ -15,10 +15,12 @@ struct domain_robotstxt_t
 	std::vector<std::string> disallow;
 	time_t last_update;
 	bool loaded;
+	bool broken;
 
 	domain_robotstxt_t()
 	  : last_update(0)
 	  , loaded(false)
+	  , broken(false)
 	{
 	}
 
@@ -46,11 +48,13 @@ struct robotstxt_t
 
 class robotstxt_consumer_t : public consumer_t
 {
+	std::string _myself_robot_id;
+
 	robotstxt_t rtxt_data;
 	pthread_mutex_t rtxt_data_mutex;
 
 public:
-	robotstxt_consumer_t();
+	robotstxt_consumer_t(const std::string& myself_robot_id);
 	~robotstxt_consumer_t() throw();
 
 	void check_url(const std::string& url, robotstxt_check_result_t& r);

@@ -2,11 +2,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-multcher::downloader::downloader()
+multcher::downloader::downloader(const std::string& myself_robot_id)
   : shutdown_asap(false)
   , thread_started(false)
   , max_concur(10)
   , consumer(0)
+  , rtxt_consumer(myself_robot_id)
 {
 	cmh = curl_multi_init();
 	pthread_mutex_init(&unknown_urls_mutex, 0);
@@ -262,7 +263,7 @@ void multcher::downloader::working_thread_proc()
 
 		if (!thread_started && !queries_running && queue.size() == 0)
 		{
-//			shutdown_asap = true;
+			shutdown_asap = true;
 		}
 	}
 }

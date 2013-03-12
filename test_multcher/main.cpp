@@ -31,7 +31,7 @@ void MyConsumer::receive(const multcher::request_t& req, const multcher::respons
 
 int main(int argc, char** argv)
 {
-	multcher::downloader mym;
+	multcher::downloader mym("SuperFetcher");
 	MyConsumer cons;
 	mym.set_consumer(&cons);
 
