@@ -5,4 +5,3 @@ User-agent: *
 Disallow: /search
 Allow: /
 
-Sitemap: http://www.businesslynch.ru/feeds/posts/default?orderby=UPDATED
