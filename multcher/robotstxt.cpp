@@ -50,6 +50,8 @@ static void get_url_domain_and_uri(const std::string& url, std::string& domain, 
 
 void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_result_t& r)
 {
+	r.disallow = false;
+
 	std::string uri;
 	get_url_domain_and_uri(url, r.domain, uri);
 
@@ -101,12 +103,54 @@ void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_re
 	}
 
 	r.allow = it->second.check_uri(uri);
+	r.disallow = !r.allow;
 	r.update_robots_txt = ::time(0) - it->second.last_update > 3 * 24 * 60 * 60;
 	r.unknown = false;
 }
 
+// TODO: very dirty and incorrect code, fix it
+static bool check_match(const std::string& uri, const std::string& cond)
+{
+	const char* i = uri.c_str();
+	const char* j = cond.c_str();
+
+	while (*i && *j)
+	{
+		if ((*i == '?') && ((*j == '$') || !*j)) return true;
+		if (*j == '*') break;
+		if (*i != *j) return false;
+		++i;
+		++j;
+	}
+
+	if (!*j) return true;
+	if (!*i && (*j == '$')) return true;
+
+	if (*j == '*')
+	{
+		++j;
+		if (!*j) return true;
+
+		// *smth condition
+		const char* fnd = strstr(i, j);
+		if (fnd)
+		{
+			while (i < fnd) if (*(i++) == '?') return false;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool multcher::domain_robotstxt_t::check_uri(const std::string& uri) const
 {
+	std::vector<item_t>::const_iterator it;
+	for (it = items.begin(); it != items.end(); ++it)
+	{
+		if (check_match(uri, it->condition)) return it->allow;
+	}
+
 	return true;
 }
 
@@ -126,6 +170,11 @@ void multcher::robotstxt_consumer_t::completely_failed(const request_t& req)
 	dr.broken = true;
 
 	pthread_mutex_unlock(&rtxt_data_mutex);
+}
+
+void multcher::robotstxt_consumer_t::robotstxt_disallowed(const request_t& req)
+{
+	completely_failed(req);
 }
 
 void multcher::robotstxt_consumer_t::receive(const request_t& req, const response_t& resp, CURLcode code)

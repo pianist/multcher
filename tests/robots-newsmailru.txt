@@ -1,0 +1,16 @@
+User-agent: *
+Disallow: /ajax
+Disallow: /rate
+Disallow: /pogoda
+Disallow: /maps
+Disallow: */page
+Disallow: */comments
+Disallow: /inf
+Disallow: /img
+Disallow: /pic
+Disallow: /search*
+Disallow: /js
+Disallow: /css
+Disallow: /rb*
+
+Sitemap: http://news.mail.ru/sitemap_index.xml

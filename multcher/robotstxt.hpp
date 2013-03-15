@@ -11,8 +11,12 @@ namespace multcher
 
 struct domain_robotstxt_t
 {
-	std::vector<std::string> allow;
-	std::vector<std::string> disallow;
+	struct item_t
+	{
+		bool allow;
+		std::string condition;
+	};
+	std::vector<item_t> items;
 	time_t last_update;
 	bool loaded;
 	bool broken;
@@ -33,6 +37,7 @@ struct domain_robotstxt_t
 struct robotstxt_check_result_t
 {
 	bool allow;
+	bool disallow;
 	bool unknown;
 	bool update_robots_txt;
 	std::string domain;
@@ -60,6 +65,7 @@ public:
 	void check_url(const std::string& url, robotstxt_check_result_t& r);
 
 	void completely_failed(const request_t& req);
+	void robotstxt_disallowed(const request_t& req);
 	void receive(const request_t& req, const response_t& resp, CURLcode code);
 };
 

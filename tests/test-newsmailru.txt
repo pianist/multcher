@@ -1,0 +1,6 @@
+/maps?x=1&y=2
+/qwe/page?qweqweqwe
+/qwe/comments
+/werfer/?ololo=/page
+/search
+/search?q=qwe

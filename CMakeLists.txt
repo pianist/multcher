@@ -23,6 +23,6 @@ INSTALL(TARGETS multcher DESTINATION lib${LIB_SUFFIX})
 ADD_EXECUTABLE(test_multcher test_multcher/main.cpp)
 TARGET_LINK_LIBRARIES(test_multcher multcher)
 
-ADD_EXECUTABLE(test_parse_robotstxt test_parse_robotstxt/main.cpp)
+ADD_EXECUTABLE(test_parse_robotstxt test_parse_robotstxt/main.cpp multcher/parse_robotstxt.cpp multcher/robotstxt.cpp)
 TARGET_LINK_LIBRARIES(test_parse_robotstxt ${LIB_coda})
 

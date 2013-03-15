@@ -55,7 +55,14 @@ void multcher::downloader::add_request(const request_t& req)
 
 	if (!cr.update_robots_txt && !cr.allow && !cr.unknown)
 	{
-		consumer->completely_failed(req);
+		if (cr.disallow)
+		{
+			consumer->robotstxt_disallowed(req);
+		}
+		else
+		{
+			consumer->completely_failed(req);
+		}
 	}
 }
 
