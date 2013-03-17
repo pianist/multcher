@@ -5,6 +5,7 @@
 multcher::downloader::downloader(const std::string& myself_robot_id)
   : shutdown_asap(false)
   , thread_started(false)
+  , fetcher_wont_send_more(false)
   , max_concur(10)
   , consumer(0)
   , rtxt_consumer(myself_robot_id)
@@ -35,7 +36,7 @@ void multcher::downloader::add_request(const request_t& req)
 		r.url = buf;
 		r.is_internal = true;
 		r.domain = cr.domain;
-		queue.add(r);
+		queue_scheduler.add(r);
 	}
 
 	if (cr.allow)
@@ -43,7 +44,7 @@ void multcher::downloader::add_request(const request_t& req)
 		request_t r = req;
 		r.is_internal = false;
 		r.domain = cr.domain;
-		queue.add(r);
+		queue_scheduler.add(r);
 	}
 
 	if (cr.unknown)
@@ -141,7 +142,7 @@ void multcher::downloader::add_requests(bool can_lock)
 {
 	request_t r;
 
-	while (queue.get(r, can_lock) >= 0)
+	while (queue_fetcher.get(r, can_lock) >= 0)
 	{
 		can_lock = false;
 
@@ -180,23 +181,34 @@ void multcher::downloader::add_requests(bool can_lock)
 	}
 }
 
-static void* job_working_thread_proc(void* p)
+static void* job_working_thread_proc_fetcher(void* p)
 {
 	multcher::downloader* m = (multcher::downloader*)p;
-	m->working_thread_proc();
+	m->working_thread_proc_fetcher();
+	return 0;
+}
+
+static void* job_working_thread_proc_scheduler(void* p)
+{
+	multcher::downloader* m = (multcher::downloader*)p;
+	m->working_thread_proc_scheduler();
 	return 0;
 }
 
 void multcher::downloader::create_working_thread()
 {
-	pthread_create(&th_fetcher, 0, job_working_thread_proc, this);
+	pthread_create(&th_fetcher, 0, job_working_thread_proc_fetcher, this);
+	pthread_create(&th_scheduler, 0, job_working_thread_proc_scheduler, this);
 	thread_started = true;
 }
 
 void multcher::downloader::join_working_thread()
 {
 	shutdown_asap = true;
-	queue.signal();
+	queue_scheduler.signal();
+	pthread_join(th_scheduler, 0);
+
+	queue_fetcher.signal();
 	pthread_join(th_fetcher, 0);
 }
 
@@ -239,6 +251,8 @@ void multcher::downloader::handle_result_message(CURLMsg* msg)
 {
 	multcher_internal_t& p = internal_data[msg->easy_handle];
 
+	_sch.set_finished_ok(p.req.domain);
+
 	if (p.req.is_internal)
 	{
 		if ((msg->data.result == 0) || (msg->data.result == 22))
@@ -272,13 +286,13 @@ void multcher::downloader::handle_result_message(CURLMsg* msg)
 	curl_easy_cleanup(msg->easy_handle);
 }
 
-void multcher::downloader::working_thread_proc()
+void multcher::downloader::working_thread_proc_fetcher()
 {
 	queries_running = -1;
 
-	while (!shutdown_asap || queries_running || queue.size() != 0)
+	while (!fetcher_wont_send_more || !shutdown_asap || queries_running || queue_fetcher.size() != 0)
 	{
-		add_requests(0 == queries_running);
+		add_requests((0 == queries_running) && !shutdown_asap);
 
 		curl_multi_perform(cmh, &queries_running);
 
@@ -290,13 +304,59 @@ void multcher::downloader::working_thread_proc()
 		{
 			handle_result_message(msg);
 		}
-
-		if (!thread_started && !queries_running && queue.size() == 0)
-		{
-			shutdown_asap = true;
-		}
 	}
 }
+
+void multcher::downloader::working_thread_proc_scheduler()
+{
+	std::vector<request_t> delayed_reqs;
+
+	while (!shutdown_asap || !delayed_reqs.empty() || queue_scheduler.size() || queries_running || queue_fetcher.size())
+	{
+		if (!delayed_reqs.empty())
+		{
+			std::vector<request_t>::iterator it;
+			for (it = delayed_reqs.begin(); it != delayed_reqs.end();)
+			{
+				unsigned w = _sch.wait_start_download(it->domain);
+				if (!w)
+				{
+					queue_fetcher.add(*it);
+					it = delayed_reqs.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+		}
+
+		request_t r;
+
+		int rc = queue_scheduler.get(r, delayed_reqs.empty() && !shutdown_asap);
+
+		if (rc >= 0)
+		{
+			unsigned w = _sch.wait_start_download(r.domain);
+			if (w)
+			{
+				delayed_reqs.push_back(r);
+			}
+			else
+			{
+				queue_fetcher.add(r);
+			}
+		}
+		else
+		{
+			if (shutdown_asap && !queries_running && !queue_fetcher.size() && !queue_scheduler.size() && delayed_reqs.empty()) fetcher_wont_send_more = true;
+			sleep(1);
+		}
+	}
+
+	fetcher_wont_send_more = true;
+}
+
 
 
 

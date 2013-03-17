@@ -111,6 +111,8 @@ void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_re
 // TODO: very dirty and incorrect code, fix it
 static bool check_match(const std::string& uri, const std::string& cond)
 {
+	if (cond.empty()) return false;
+
 	const char* i = uri.c_str();
 	const char* j = cond.c_str();
 

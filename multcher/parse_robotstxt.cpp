@@ -39,6 +39,7 @@ static int command_id(const char* b, const char* e, const char** param)
 	if (command_name_cmp("Disallow:", b, param)) return 2;
 	if (command_name_cmp("Allow:", b, param)) return 3;
 	if (command_name_cmp("Sitemap:", b, param)) return 4;
+	if (command_name_cmp("Crawl-delay:", b, param)) return 5;
 
 	return 0;
 }
@@ -75,6 +76,8 @@ void multcher::domain_robotstxt_t::parse_from_source(const char* src, const char
 					items.push_back(item);
 				}
 				break;
+			case 5:
+				crawl_delay.assign(param, e - param);
 		}
 	}
 }

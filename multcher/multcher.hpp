@@ -28,17 +28,52 @@ struct multcher_internal_t
 	}
 };
 
+class scheduler
+{
+	struct domain_info_t
+	{
+		unsigned crawl_delay;
+		unsigned max_fetching;
+		unsigned now_fetching;
+		time_t last_start;
+		time_t last_finish;
+		domain_info_t()
+		  : crawl_delay(10)
+		  , max_fetching(1)
+		  , now_fetching(0)
+		  , last_start(0)
+		  , last_finish(0)
+		{
+		}
+	};
+
+	typedef std::map<std::string, domain_info_t> domains_info_t;
+
+	domains_info_t _di;
+	pthread_mutex_t di_mutex;
+public:
+	scheduler();
+	~scheduler();
+	unsigned wait_start_download(const std::string& domain);
+	void set_finished_ok(const std::string& domain);
+
+};
 
 class downloader
 {
-	coda::synque<request_t> queue;
+	coda::synque<request_t> queue_scheduler;
+	coda::synque<request_t> queue_fetcher;
 
 	class multcher_internal;
 	std::map<CURL*, multcher_internal_t> internal_data;
 
+	scheduler _sch;
+
 	pthread_t th_fetcher;
+	pthread_t th_scheduler;
 	bool shutdown_asap;
 	bool thread_started;
+	bool fetcher_wont_send_more;
 	int max_concur;
 	int queries_running;
 	CURLM* cmh;
@@ -65,8 +100,8 @@ public:
 
 	void add_request(const request_t& req);
 
-
-	void working_thread_proc();
+	void working_thread_proc_scheduler();
+	void working_thread_proc_fetcher();
 };
 
 

@@ -17,6 +17,8 @@ struct domain_robotstxt_t
 		std::string condition;
 	};
 	std::vector<item_t> items;
+	std::string crawl_delay;
+
 	time_t last_update;
 	bool loaded;
 	bool broken;
