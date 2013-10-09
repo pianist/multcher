@@ -55,6 +55,14 @@ void multcher::robotstxt_t::check_url(const std::string& url, robotstxt_check_re
 	std::string uri;
 	get_url_domain_and_uri(url, r.domain, uri);
 
+	if (r.domain == "rutracker.org")
+	{
+		r.allow = true;
+		r.update_robots_txt = false;
+		r.unknown = false;
+		return;
+	}
+
 	if (r.domain.empty())
 	{
 		r.update_robots_txt = false;

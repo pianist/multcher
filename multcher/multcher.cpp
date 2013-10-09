@@ -108,6 +108,7 @@ static size_t cb_response_header(void* ptr, size_t size, size_t nmemb, void* use
 
 	if (strncasecmp((char*)ptr, "HTTP/", 5) == 0)
 	{
+		resp->body.clear();
 		resp->code = atoi((char*)ptr + 9);
 		return nmemb;
 	}

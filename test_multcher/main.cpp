@@ -29,6 +29,8 @@ void MyConsumer::robotstxt_disallowed(const multcher::request_t& req)
 	fprintf(stdout, "Denied by robots.txt: %s\n", req.url.c_str());
 }
 
+int doc_counter;
+
 void MyConsumer::receive(const multcher::request_t& req, const multcher::response_t& resp, CURLcode code)
 {
 	fprintf(stdout, "--->8---\n");
@@ -37,12 +39,31 @@ void MyConsumer::receive(const multcher::request_t& req, const multcher::respons
 	for (multcher::redirects_t::const_iterator it = resp.redirects.begin(); it != resp.redirects.end(); ++it)
 		fprintf(stderr, "\t(%d) %s\n", it->code, it->location.c_str());
 	fprintf(stdout, "HTTP code: %d\n", resp.code);
+
+	if (resp.code == 200)
+	{
+		char fname[1024];
+		snprintf(fname, 1024, "%i.hdr", doc_counter);
+		FILE* f = fopen(fname, "w");
+		fprintf(f, "URL: %s\n", req.url.c_str());
+		fprintf(f, "Content-type: %s\n", resp.content_type.c_str());
+		fclose(f);
+
+		snprintf(fname, 1024, "%i.html", doc_counter);
+		f = fopen(fname, "w");
+		fprintf(f, "%s", resp.body.c_str());
+		fclose(f);
+	}
+
+	doc_counter++;
+
 	fprintf(stdout, "Content-type: %s\n", resp.content_type.c_str());
 	fprintf(stdout, "---8<---\n");
 }
 
 int main(int argc, char** argv)
 {
+	doc_counter = 1000000;
 	multcher::downloader mym("SuperFetcher");
 	MyConsumer cons;
 	mym.set_consumer(&cons);
