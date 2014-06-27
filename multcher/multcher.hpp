@@ -7,6 +7,7 @@
 #include <map>
 #include <vector>
 #include <pthread.h>
+#include <unistd.h>
 #include <coda/synque.hpp>
 #include <curl/curl.h>
 #include "consumer.hpp"

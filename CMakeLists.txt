@@ -10,10 +10,12 @@ SET(MULTCHER_VERSION "${MULTCHER_VERSION_MAJOR}.${MULTCHER_VERSION_MINOR}.${MULT
 USE_PACKAGE (expat expat.h)
 USE_PACKAGE (coda coda/coda.h)
 USE_PACKAGE (curl curl/curl.h)
+USE_PACKAGE (unistd unistd.h)
+USE_PACKAGE (pthread pthread.h)
 
 AUX_SOURCE_DIRECTORY(multcher SRC_MULTCHER)
 ADD_LIBRARY(multcher ${SRC_MULTCHER})
-TARGET_LINK_LIBRARIES(multcher ${LIB_coda} curl pthread)
+TARGET_LINK_LIBRARIES(multcher ${LIB_coda} curl pthread unistd)
 SET_TARGET_PROPERTIES(multcher PROPERTIES OUTPUT_NAME multcher)
 SET_TARGET_PROPERTIES(multcher PROPERTIES LINKER_LANGUAGE CXX)
 
