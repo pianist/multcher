@@ -14,7 +14,7 @@ USE_PACKAGE (pthread pthread.h)
 
 AUX_SOURCE_DIRECTORY(multcher SRC_MULTCHER)
 ADD_LIBRARY(multcher ${SRC_MULTCHER})
-TARGET_LINK_LIBRARIES(multcher ${LIB_coda} curl pthread unistd)
+TARGET_LINK_LIBRARIES(multcher ${LIB_coda} curl pthread)
 SET_TARGET_PROPERTIES(multcher PROPERTIES OUTPUT_NAME multcher)
 SET_TARGET_PROPERTIES(multcher PROPERTIES LINKER_LANGUAGE CXX)
 

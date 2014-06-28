@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <pthread.h>
 #include "consumer.hpp"
 
 namespace multcher
