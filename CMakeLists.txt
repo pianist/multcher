@@ -10,7 +10,6 @@ SET(MULTCHER_VERSION "${MULTCHER_VERSION_MAJOR}.${MULTCHER_VERSION_MINOR}.${MULT
 USE_PACKAGE (expat expat.h)
 USE_PACKAGE (coda coda/coda.h)
 USE_PACKAGE (curl curl/curl.h)
-USE_PACKAGE (unistd unistd.h)
 USE_PACKAGE (pthread pthread.h)
 
 AUX_SOURCE_DIRECTORY(multcher SRC_MULTCHER)
